@@ -92,7 +92,7 @@ WantedBy=multi-user.target
 ### `go get`
 If you have the go toolchain installed locally, you can install CUProxy using `go get`.
 
-To install execute `go install github.com/tuupke/pixie/cuproxy@latest`.
+To install execute `go install github.com/tuupke/cuproxy@latest`.
 
 To run execute `$(go env GOPATH)/bin/cuproxy`.
 

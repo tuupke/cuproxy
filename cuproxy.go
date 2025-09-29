@@ -21,30 +21,30 @@ import (
 	zlog "github.com/rs/zerolog/log"
 	"github.com/valyala/fasthttp"
 
-	"github.com/tuupke/pixie/env"
-	"github.com/tuupke/pixie/lifecycle"
+	"github.com/tuupke/utils/env"
+	"github.com/tuupke/utils/lifecycle"
 )
 
 var (
-	cupsListen = env.StringFb("LISTEN", ":631")
-	printerTo  = env.String("PRINTER_TO")
+	cupsListen = env.String("LISTEN", ":631")
+	printerTo  = env.String("PRINTER_TO", "")
 
 	to = btsReplace([]byte("ipp://" + printerTo))
 
-	dumpsPath        = env.StringFb("DUMP_IPP_CONTENTS", "")
-	dumpReplacements = env.Bool("DUMP_REPLACEMENTS")
-	dumpOriginal     = env.Bool("DUMP_ORIGINAL")
-	appendBanner     = env.Bool("BANNER_APPEND")
-	bannerOnBack     = env.Bool("BANNER_ON_BACK")
-	cupsfilter       = env.String("CUPSFILTER_LOCATION")
-	maxRequestSize   = 128 << 20 // env.IntFb("MAX_REQUEST_SIZE", 128<<20) // 128 MiB
+	dumpsPath        = env.String("DUMP_IPP_CONTENTS", "")
+	dumpReplacements = env.Bool("DUMP_REPLACEMENTS", false)
+	dumpOriginal     = env.Bool("DUMP_ORIGINAL", false)
+	appendBanner     = env.Bool("BANNER_APPEND", false)
+	bannerOnBack     = env.Bool("BANNER_ON_BACK", false)
+	cupsfilter       = env.String("CUPSFILTER_LOCATION", "")
+	maxRequestSize   = 128 << 20 // env.Int("MAX_REQUEST_SIZE", 128<<20) // 128 MiB
 	seqId            = new(uint64)
 	numPrints        = new(uint64)
-	ppdLocation      = env.StringFb("PPD_LOCATION", "/usr/share/ppd/cupsfilters/Generic-PDF_Printer-PDF.ppd")
+	ppdLocation      = env.String("PPD_LOCATION", "/usr/share/ppd/cupsfilters/Generic-PDF_Printer-PDF.ppd")
 
-	panicWithoutBanner = env.Bool("BANNER_MUST_EXIST")
+	panicWithoutBanner = env.Bool("BANNER_MUST_EXIST", false)
 
-	pdfLocation = strings.TrimRight(env.StringFb("PDF_LOCATION", os.TempDir()), "/")
+	pdfLocation = strings.TrimRight(env.String("PDF_LOCATION", os.TempDir()), "/")
 
 	// requestPromises maps all cups job-id's to structs that aid with interacting
 	// with the data-retrieval promises.
@@ -53,7 +53,7 @@ var (
 
 func init() {
 	// Load the logger
-	l, err := zerolog.ParseLevel(env.StringFb("LOG_LEVEL", "info"))
+	l, err := zerolog.ParseLevel(env.String("LOG_LEVEL", "info"))
 	if err != nil {
 		zlog.Fatal().Err(err).Msg("could not parse level")
 	}
@@ -101,13 +101,13 @@ func main() {
 		zlog.Fatal().Err(err).Msg("cups proxy cannot be started")
 	}
 
-	lifecycle.EFinally(ln.Close)
+	lifecycle.CleanupErr(ln.Close)
 	zlog.Info().Msg("started cups proxy")
 	go server.Serve(ln)
 
 	zlog.Info().Str("printer to", printerTo).Str("listen", cupsListen).Int("max_body_size", maxRequestSize).Msg("Booted")
-	lifecycle.Finally(func() { zlog.Warn().Msg("Stopping") })
-	lifecycle.StopListener()
+	lifecycle.Cleanup(func() { zlog.Warn().Msg("Stopping") })
+	lifecycle.AwaitStop()
 }
 
 // Byter is an interface around the `Bytes` method returning a byte slice. Used
@@ -275,7 +275,7 @@ func cupsHandler(ctx *fasthttp.RequestCtx) {
 		// The to-be-printed document is ready, retrieve, or wait for the rendering of,
 		// the banner-pdf.
 		v.callItIn()
-		filePointer, err := v.pdfPromise.Await(lifecycle.ApplicationContext())
+		filePointer, err := v.pdfPromise.Await(lifecycle.Context())
 		log.Err(err).Msg("retrieved PDF to stitch")
 
 		// If no banner page exists, skip stitching, and (by default) pass the original print to the printer.

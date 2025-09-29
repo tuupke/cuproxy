@@ -10,22 +10,22 @@ import (
 	"github.com/jung-kurt/gofpdf"
 	"github.com/rs/zerolog"
 
-	"github.com/tuupke/pixie/env"
+	"github.com/tuupke/utils/env"
 )
 
 var (
-	pdfUnit        = env.StringFb("PDF_UNIT", "mm")
-	pdfSize        = env.StringFb("PDF_PAGE_SIZE", "A4")
-	pdfFontDir     = env.String("PDF_FONT_DIR")
-	pdfInLandscape = env.Bool("PDF_LANDSCAPE")
+	pdfUnit        = env.String("PDF_UNIT", "mm")
+	pdfSize        = env.String("PDF_PAGE_SIZE", "A4")
+	pdfFontDir     = env.String("PDF_FONT_DIR", "")
+	pdfInLandscape = env.Bool("PDF_LANDSCAPE", false)
 
-	pdfLeftMargin = env.FloatFb("PDF_LEFT_MARGIN", 10)
-	pdfTopMargin  = env.FloatFb("PDF_TOP_MARGIN", 10)
-	fontSize      = env.FloatFb("PDF_FONT_SIZE", 12)
-	pdfLineHeight = pointsToUnits(fontSize) * env.FloatFb("PDF_LINE_HEIGHT", 1.2)
-	font          = env.StringFb("PDF_FONT_FAMILY", "Arial")
+	pdfLeftMargin = env.Float("PDF_LEFT_MARGIN", 10)
+	pdfTopMargin  = env.Float("PDF_TOP_MARGIN", 10)
+	fontSize      = env.Float("PDF_FONT_SIZE", 12)
+	pdfLineHeight = pointsToUnits(fontSize) * env.Float("PDF_LINE_HEIGHT", 1.2)
+	font          = env.String("PDF_FONT_FAMILY", "Arial")
 
-	imgDpi = float64(env.IntFb("IMAGE_PPI", 120))
+	imgDpi = float64(env.Int("IMAGE_PPI", 120))
 )
 
 // pointsToUnits converts a fontsize in points to the unit stored in pdfUnit.

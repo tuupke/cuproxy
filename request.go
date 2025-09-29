@@ -20,8 +20,8 @@ import (
 	"github.com/rs/zerolog"
 	zlog "github.com/rs/zerolog/log"
 
-	"github.com/tuupke/pixie/env"
-	"github.com/tuupke/pixie/lifecycle"
+	"github.com/tuupke/utils/env"
+	"github.com/tuupke/utils/lifecycle"
 )
 
 type (
@@ -43,7 +43,7 @@ var (
 	// etagCache is an etag cache. Stores the retrieved etag for some url
 	etagCache  = xsync.NewMapOf[etagPair]()
 	pixieNonce = func() string {
-		nonce := env.String("WEBHOOK_REQUEST_NONCE")
+		nonce := env.String("WEBHOOK_REQUEST_NONCE", "")
 		if nonce == "" {
 
 			const pixieNonceAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
@@ -61,7 +61,7 @@ var (
 		return nonce
 	}()
 
-	maxWebhookTime = env.DurationFb("WEBHOOK_MAX_DURATION", time.Second*30)
+	maxWebhookTime = env.Duration("WEBHOOK_MAX_DURATION", time.Second*30)
 )
 
 func Do(ctx context.Context, log zerolog.Logger, url, verb string, ip net.IP, requestBody io.Reader) (responseBody io.ReadCloser, responseType string, loaded bool, err error) {
@@ -221,7 +221,7 @@ func (ep endpoints) handle(c chan e, log zerolog.Logger, data *Props) func() {
 			for _, end := range eps {
 				log = log.With().Str("verb", end.method).Str("url", end.url).Bool("with-ip", data.ip != nil).Logger()
 
-				respBody, respType, loaded, err := end.executeRequest(lifecycle.ApplicationContext(), log, data)
+				respBody, respType, loaded, err := end.executeRequest(lifecycle.Context(), log, data)
 				log.Err(err).Bool("new data", loaded).Msg("request executed")
 				if err != nil {
 					return

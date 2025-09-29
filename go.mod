@@ -1,6 +1,6 @@
-module github.com/gehack/pixie/cuproxy
+module github.com/tuupke/cuproxy
 
-go 1.21.1
+go 1.25.1
 
 require (
 	github.com/chebyrash/promise v0.0.0-20230709133807-42ec49ba1459
@@ -9,9 +9,9 @@ require (
 	github.com/panjf2000/ants/v2 v2.9.0
 	github.com/pdfcpu/pdfcpu v0.6.0
 	github.com/puzpuzpuz/xsync v1.5.2
-	github.com/rs/zerolog v1.31.0
+	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.8.4
-	github.com/tuupke/pixie v0.0.0-20231114210209-2c4f69b8dcf2
+	github.com/tuupke/utils v0.0.0-20250929184258-aec39b2b6906
 	github.com/valyala/fasthttp v1.51.0
 	github.com/valyala/fasttemplate v1.2.2
 )
@@ -39,5 +39,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/tuupke/pixie => ../

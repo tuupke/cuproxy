@@ -21,8 +21,8 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasttemplate"
 
-	"github.com/tuupke/pixie/env"
-	"github.com/tuupke/pixie/lifecycle"
+	"github.com/tuupke/utils/env"
+	"github.com/tuupke/utils/lifecycle"
 )
 
 type (
@@ -44,11 +44,11 @@ type (
 
 var (
 	cpuPool, ioPool  promise.Pool
-	printKeys        = strings.Split(env.StringFb("PRINT_KEYS", "*"), ",")
-	includeBasicAuth = env.Bool("BASIC_AUTH_IN_DATA")
-	basicAuthUser    = env.StringFb("BASIC_AUTH_USERNAME", "ba_username")
-	basicAuthPass    = env.StringFb("BASIC_AUTH_PASSWORD", "ba_password")
-	alwaysFreshData  = env.Bool("BANNER_DATA_ALWAYS_FRESH")
+	printKeys        = strings.Split(env.String("PRINT_KEYS", "*"), ",")
+	includeBasicAuth = env.Bool("BASIC_AUTH_IN_DATA", false)
+	basicAuthUser    = env.String("BASIC_AUTH_USERNAME", "ba_username")
+	basicAuthPass    = env.String("BASIC_AUTH_PASSWORD", "ba_password")
+	alwaysFreshData  = env.Bool("BANNER_DATA_ALWAYS_FRESH", false)
 )
 
 func init() {
@@ -77,7 +77,7 @@ func loadValues(log zerolog.Logger, ctx *fasthttp.RequestCtx, jobId int32) promi
 
 	log = log.With().IPAddr("for", data.ip).Int32("job-id", jobId).Logger()
 
-	awaitCtx, cancel := context.WithCancel(lifecycle.ApplicationContext())
+	awaitCtx, cancel := context.WithCancel(lifecycle.Context())
 	waitFor := len(toCall)
 	c := make(chan e, waitFor)
 	log.Info().Int("num_hooks", waitFor).Msg("loading data")
@@ -110,7 +110,7 @@ func loadValues(log zerolog.Logger, ctx *fasthttp.RequestCtx, jobId int32) promi
 	})
 
 	// computes result based on the fetched data, runs on cpuOptimizedPool
-	pdfPromise := promise.ThenWithPool(fanin, lifecycle.ApplicationContext(), func(_ e) (*os.File, error) {
+	pdfPromise := promise.ThenWithPool(fanin, lifecycle.Context(), func(_ e) (*os.File, error) {
 		// Load the stat on the pdf
 		fn := pdfLocation + "/" + data.ip.String() + ".pdf"
 		file, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE, 0755)
@@ -156,12 +156,12 @@ func replaceParameters(template string, data *Props, webhookname string) (string
 }
 
 var (
-	imageKey    = env.StringFb("IMAGE_KEY", "image")
+	imageKey    = env.String("IMAGE_KEY", "image")
 	props       = xsync.NewMapOf[Props]()
-	keyTemplate = env.String("WEBHOOK_KEY_TEMPLATE")
-	downloadTo  = env.StringFb("WEBHOOK_TEMP_DIR", os.TempDir())
+	keyTemplate = env.String("WEBHOOK_KEY_TEMPLATE", "")
+	downloadTo  = env.String("WEBHOOK_TEMP_DIR", os.TempDir())
 
-	toCallString = env.String("WEBHOOKS_TO_CALL")
+	toCallString = env.String("WEBHOOKS_TO_CALL", "")
 	toCall       endpointsSet
 )
 
