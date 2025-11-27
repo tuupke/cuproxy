@@ -36,6 +36,7 @@ var (
 	dumpOriginal     = env.Bool("DUMP_ORIGINAL", false)
 	appendBanner     = env.Bool("BANNER_APPEND", false)
 	bannerOnBack     = env.Bool("BANNER_ON_BACK", false)
+	useGhostscript   = env.Bool("USE_GHOSTSCRIPT", false)
 	cupsfilter       = env.String("CUPSFILTER_LOCATION", "")
 	maxRequestSize   = 128 << 20 // env.Int("MAX_REQUEST_SIZE", 128<<20) // 128 MiB
 	seqId            = new(uint64)
@@ -149,6 +150,92 @@ func writeToFile[T Byter](seqId uint64, request, replaced bool, contents T) erro
 	}
 
 	return nil
+}
+
+func stitchPdfCpu(toStitch []io.ReadSeeker, out io.Writer) (err error) {
+	return pdfcpu.MergeRaw(toStitch, out, false, nil)
+}
+
+func stitchGhostscript(toStitch []io.ReadSeeker, out io.Writer) (err error) {
+	// Attempt to convert all toStitch's to a file
+	fmt.Println("stitching ghostscript")
+	filenames := make([]string, len(toStitch))
+
+	for i := range filenames {
+		var f *os.File
+		var ok bool
+
+		if f, ok = toStitch[i].(*os.File); ok {
+			filenames[i] = f.Name()
+			continue
+		}
+
+		// Create a temporary file to write to
+		f, err = os.CreateTemp("", "cuproxy-gs-stitch-")
+		if err != nil {
+			return err
+		}
+
+		// Delete all files when done. Don't care about the loop, should be small.
+		defer func(f *os.File) {
+			_ = os.Remove(f.Name())
+		}(f)
+
+		var n int64
+		n, err = io.Copy(f, toStitch[i])
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("copied ", n, " bytes to", f.Name())
+		filenames[i] = f.Name()
+
+		err = f.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	// Create the output file
+	outFile, err := os.CreateTemp("", "cuproxy-gs-stitch-out-")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(outFile.Name())
+
+	// Invoke ghostscript
+	args := append([]string{
+		"-q",
+		"-dCompatibilityLevel=1.4",
+		"-dNOPAUSE",
+		"-dQUIET",
+		"-dBATCH",
+		"-sDEVICE=pdfwrite",
+		"-sOutputFile=" + outFile.Name(),
+	}, filenames...)
+
+	var bts []byte
+	bts, err = exec.Command("gs", args...).CombinedOutput()
+	fmt.Println(string(bts))
+	if err != nil {
+		return
+	}
+
+	_, err = outFile.Seek(0, 0)
+	if err != nil {
+		return
+	}
+
+	_, err = io.Copy(out, outFile)
+	return
+}
+
+func stitch(toStitch []io.ReadSeeker, out io.Writer, ghostscript bool) error {
+	if !ghostscript {
+		return stitchPdfCpu(toStitch, out)
+	}
+
+	return stitchGhostscript(toStitch, out)
 }
 
 func cupsHandler(ctx *fasthttp.RequestCtx) {
@@ -284,13 +371,18 @@ func cupsHandler(ctx *fasthttp.RequestCtx) {
 			defer file.Close()
 
 			tempReader := bytes.NewBuffer(make([]byte, 0, len(body)))
+
+			tf, _ := os.CreateTemp("", "cuproxy-stitched-*.pdf")
+			mw := io.MultiWriter(tempReader, tf)
+
 			pdf := []io.ReadSeeker{file, pdfReader}
 			if appendBanner {
 				// Flip the pdfs to stitch
 				pdf[0], pdf[1] = pdf[1], pdf[0]
 			}
 
-			err := pdfcpu.MergeRaw(pdf, tempReader, false, nil)
+			err := stitch(pdf, mw, useGhostscript)
+
 			log.Err(err).Msg("merged banner with main print")
 			if err == nil {
 				num, err := io.Copy(newB, tempReader)
