@@ -10,8 +10,8 @@ require (
 	github.com/pdfcpu/pdfcpu v0.6.0
 	github.com/puzpuzpuz/xsync v1.5.2
 	github.com/rs/zerolog v1.34.0
-	github.com/stretchr/testify v1.8.4
-	github.com/tuupke/utils v0.0.0-20250929184258-aec39b2b6906
+	github.com/stretchr/testify v1.11.1
+	github.com/tuupke/utils v0.0.0-20251127150518-4c4bc8ed2f42
 	github.com/valyala/fasthttp v1.51.0
 	github.com/valyala/fasttemplate v1.2.2
 )
