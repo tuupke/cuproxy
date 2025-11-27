@@ -290,7 +290,7 @@ func cupsHandler(ctx *fasthttp.RequestCtx) {
 				pdf[0], pdf[1] = pdf[1], pdf[0]
 			}
 
-			err := pdfcpu.MergeRaw([]io.ReadSeeker{file, pdfReader}, tempReader, false, nil)
+			err := pdfcpu.MergeRaw(pdf, tempReader, false, nil)
 			log.Err(err).Msg("merged banner with main print")
 			if err == nil {
 				num, err := io.Copy(newB, tempReader)
